@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
+import (
+	rss_parser "rss-reader/pkg/rss_parser_async"
+)
 
 func main(){
-	fmt.Println("Hello World!")
+	rss_parser.Parse([]string{"url1", "url2"})
 }
