@@ -9,6 +9,7 @@ import (
 	"testing"
 )
 
+// todo: test more
 type mockHttpClient struct {
 	httpInterface
 }
@@ -24,6 +25,7 @@ func setupParser(maxLen int) (p *rssParserSync, wgp sync.WaitGroup) {
 	return
 
 }
+
 func (r *mockHttpClient) get(url string) (responseBytes []byte, err error) {
 	// Replacing a http GET with our known file in order to have a reproducible state
 	f, err := os.Open(url)
