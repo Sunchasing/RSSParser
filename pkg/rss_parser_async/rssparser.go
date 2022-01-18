@@ -152,9 +152,9 @@ func (p *rssParserSync) parseToChannel(url string) (err error) {
 			err = fmt.Errorf("failed to parse XML data: %v", e)
 			return
 		}
+
 		for _, parsedItem := range parsedXml {
 			rv = append(rv, parsedItem)
-
 		}
 
 		p.out <- rv
@@ -178,7 +178,7 @@ func (p *rssParserSync) parseAsync(urls []string) (err error) {
 		go func() {
 			err = p.parseToChannel(urlLocal)
 			if err != nil {
-				err = fmt.Errorf("failed to get return value for %s: %v", urlLocal, err)
+				err = fmt.Errorf("failed to get return value for %s: %v\n", urlLocal, err)
 			}
 		}()
 	}
@@ -196,13 +196,13 @@ func (p *rssParserSync) formatChannelData() (rv []RssItem) {
 	return
 }
 
-func Parse(urls []string) (rv []RssItem, err error) {
+func Parse(urls []string) (finalItems []RssItem, err error) {
 	out := make(chan []RssItem, len(urls))
 	ps := newRssParserSynchronizer(out)
 	if err = ps.parseAsync(urls); err != nil {
 		return nil, fmt.Errorf("failed to parseToChannel URLs: %v", err)
 	}
 
-	rv = ps.formatChannelData()
+	finalItems = ps.formatChannelData()
 	return
 }

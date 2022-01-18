@@ -1,15 +1,22 @@
 package rss_reader
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 )
 
-// todo: test more
+var mockXml = func() string {
+	xmlFile, _ := os.Getwd()
+	xmlFile = filepath.Dir(xmlFile)
+	xmlFile = filepath.Dir(xmlFile) + "\\mocks\\mockedXML.xml"
+	return xmlFile
+}()
+
 type mockHttpClient struct {
 	httpInterface
 }
@@ -23,7 +30,6 @@ func setupParser(maxLen int) (p *rssParserSync, wgp sync.WaitGroup) {
 		hr:  &mockHttpClient{},
 	}
 	return
-
 }
 
 func (r *mockHttpClient) get(url string) (responseBytes []byte, err error) {
@@ -42,45 +48,54 @@ func (r *mockHttpClient) get(url string) (responseBytes []byte, err error) {
 	return ioutil.ReadAll(f)
 }
 
-func Test_parse(t *testing.T) {
-	mockDir, _ := os.Getwd()
-	mockDir = filepath.Dir(mockDir)
-	mockDir = filepath.Dir(mockDir) + "\\mocks\\mockedXML.xml"
-	testParseToChannel(t, []string{mockDir})
-}
-
-func testParseToChannel(t *testing.T, urls []string) {
+func Test_parseToChannel(t *testing.T) {
+	urls := []string{mockXml}
 	p, wg := setupParser(len(urls))
 	readBytes, _ := p.hr.get(urls[0])
+	// 117823 is the length of the provided xml file
+	require.Equal(t, 117823, len(readBytes))
 
-	assert.Equal(t, 117823, len(readBytes))
-
-	assert.Equal(t, &wg, p.wg)
+	require.Equal(t, &wg, p.wg)
 
 	p.wg.Add(1)
 
 	err := p.parseToChannel(urls[0])
 	p.wg.Wait()
 
-	assert.Equal(t, false, err != nil)
+	require.Equal(t, false, err != nil)
 }
 
-// todo: better
-//func TestParse(t *testing.T) {
-//
-//	mockDir, _ := os.Getwd()
-//	mockDir = filepath.Dir(mockDir)
-//	mockDir = filepath.Dir(mockDir) + "\\mocks\\mockedXML.xml"
-//	urls := []string{mockDir}
-//
-//	var rv []RssItem
-//	p, _ := setupParser(len(urls))
-//	_ = p.parseAsync(urls)
-//
-//	rv = p.formatChannelData()
-//
-//	numRssItems := assert.Equal(t, len(urls), len(rv))
-//	if !numRssItems{
-//		t.Fatalf("expected size of the return value is %v, got %v", len(urls), len(rv))
-//	}
-//}
+func TestParse(t *testing.T) {
+
+	urls := []string{mockXml}
+
+	p, _ := setupParser(len(urls))
+	err := p.parseAsync(urls)
+	require.True(t, err == nil)
+
+	finalItems := p.formatChannelData()
+	require.Equal(t, 10, len(finalItems))
+
+	// avoids trying to close a closed channel
+	time.Sleep(100)
+	badUrls := []string{
+		"failMe/",
+	}
+	p, _ = setupParser(len(badUrls))
+	err = p.parseAsync(badUrls)
+	require.True(t, err != nil)
+}
+
+func Test_parseTime(t *testing.T) {
+	_, err := parseTime("fail me")
+	require.True(t, err != nil)
+}
+
+func Test_parseXml(t *testing.T) {
+	xml, err := parseXml([]byte{0}, "")
+	if err != nil {
+		return
+	}
+	require.True(t, err != nil)
+	require.True(t, xml == nil)
+}
